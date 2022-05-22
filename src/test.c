@@ -24,9 +24,42 @@ void remove_namespace(xmlNodePtr node, const xmlChar* ns) {
     remove_namespace(node,ns);
 }
 
-// for (xmlAttr* attr = root->properties; attr; attr = attr->next) {
-//   printf("%s\n",attr->name);
-// }
+double** parse_path(const char* d) {
+  // M = move
+  // L = line
+  // H = horizontal line
+  // V = vertical line
+  // C = curve
+  // S = smooth curve
+  // Q = quadratic Bézier curve
+  // T = smooth quadratic Bézier curve
+  // A = elliptical arc
+  // Z = close path
+
+  printf("%s\n",d);
+
+  double*  vals = malloc(1<<10);
+  double** path = malloc(1<<10);
+
+  int n = 0;
+  for (char* end; d; ++d) {
+    if (n) {
+      double x = strtod(d,&end);
+      printf("%g\n",x);
+
+      d = end;
+      --n;
+    } else switch (*d) {
+      case 'M':
+        n = 2;
+        break;
+      default: ;
+    }
+  }
+
+  path[0] = vals;
+  return path;
+}
 
 int main(int argc, char** argv) {
   if (argc!=3) {
@@ -44,20 +77,16 @@ int main(int argc, char** argv) {
     ERROR(1,"unable to parse file \"%s\"\n",argv[1])
 
   // allow xpath to match without xmlns
-  xmlNodePtr root = xmlDocGetRootElement(doc);
-  const xmlChar* root_ns = root->ns->href;
-  if (root_ns)
-    remove_namespace(root,root_ns);
+  { xmlNodePtr root = xmlDocGetRootElement(doc);
+    const xmlChar* root_ns = root->ns->href;
+    if (root_ns)
+      remove_namespace(root,root_ns);
+  }
 
   // Create xpath evaluation context
   xmlXPathContextPtr xpathCtx = xmlXPathNewContext(doc);
   if (!xpathCtx)
     ERROR(2,"unable to create xpath context\n")
-
-  // if (xmlXPathRegisterNs(
-  //   xpathCtx, BAD_CAST "svg", BAD_CAST "http://www.w3.org/2000/svg"
-  // ))
-  //   ERROR(2,"unable to register namespace svg\n")
 
   // Evaluate xpath expression
   const xmlChar* xpathExpr = BAD_CAST argv[2];
@@ -71,12 +100,16 @@ int main(int argc, char** argv) {
   if (nnodes != 1)
     ERROR(4,"xpath expression \"%s\" matched %d nodes\n",xpathExpr,nnodes)
 
-  // for (int i=nnodes; i--; ) {
-  // }
+  xmlChar* d = xmlGetProp(nodes->nodeTab[0], BAD_CAST "d");
+  if (d) {
+    double** path = parse_path((const char*)d);
 
-  const xmlChar* d = xmlGetProp(nodes->nodeTab[0], BAD_CAST "d");
-  if (d)
-    printf("%s\n",d);
+    // TODO
+
+    free(*path);
+    free(path);
+    xmlFree(d);
+  }
 
 end_4:
   xmlXPathFreeObject(xpathObj);
